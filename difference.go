@@ -29,14 +29,15 @@ import (
 type objectDifference func(string, string, os.FileMode, int64, time.Time) (differType, *probe.Error)
 
 // differType difference in type.
-type differType string
+type differType int16
 
 const (
-	differInSize  differType = "size"          // differs in size
-	differInTime             = "time"          // differs in time
-	differInFirst            = "only-in-first" // only on first source
-	differInType             = "type"          // differs in type, exfile/directory
-	differInNone             = ""              // does not differ
+	differInNone      differType = iota // does not differ
+	differInSize                        // differs in size
+	differInTimeNewer                   // is newer
+	differInTimeOlder                   // is older
+	differInFirst                       // only on first source
+	differInType                        // differs in type, exfile/directory
 )
 
 // objectDifferenceFactory returns objectDifference function to check for difference
@@ -68,15 +69,21 @@ func objectDifferenceFactory(targetClnt Client) objectDifference {
 					// Type differes. Source is never a directory.
 					return differInType, nil
 				}
-				if (srcType.IsRegular() && tgtType.IsRegular()) && srcSize != tgtSize {
-					// Regular files differing in size.
-					return differInSize, nil
+				if srcType.IsRegular() && tgtType.IsRegular() {
+					if srcSize != tgtSize {
+						// Files differ in size.
+						return differInSize, nil
+					}
+					if srcTime.After(tgtTime) {
+						// Source is newer than target.
+						return differInTimeNewer, nil
+					}
+					if srcTime.Before(tgtTime) {
+						// Source is older than target.
+						return differInTimeOlder, nil
+					}
 				}
-				if (srcType.IsRegular() && tgtType.IsRegular()) && srcTime.After(tgtTime) {
-					// Regular files differing in time.
-					return differInTime, nil
-				}
-				return differInNone, nil // Available in the target.
+				return differInNone, nil
 			}
 			content, ok = <-ch
 			if !ok {
@@ -84,7 +91,7 @@ func objectDifferenceFactory(targetClnt Client) objectDifference {
 				return differInFirst, nil
 			}
 			if content.Err != nil {
-				return "", content.Err.Trace()
+				return differInNone, content.Err.Trace()
 			}
 			current = content.URL.String()
 		}

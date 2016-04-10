@@ -87,9 +87,13 @@ func (d diffMessage) String() string {
 	case differInSize:
 		msg = console.Colorize("DiffMessage",
 			"‘"+d.FirstURL+"’"+" and "+"‘"+d.SecondURL+"’") + console.Colorize("DiffSize", " - differ in size.")
-	case differInTime:
+	case differInTimeOlder:
 		msg = console.Colorize("DiffMessage",
-			"‘"+d.FirstURL+"’"+" and "+"‘"+d.SecondURL+"’") + console.Colorize("DiffTime", " - differ in modified time.")
+			"‘"+d.FirstURL+"’"+" and "+"‘"+d.SecondURL+"’") + console.Colorize("DiffTime", " - first is older.")
+	case differInTimeNewer:
+		msg = console.Colorize("DiffMessage",
+			"‘"+d.FirstURL+"’"+" and "+"‘"+d.SecondURL+"’") + console.Colorize("DiffTime", " - first is newer.")
+
 	default:
 		fatalIf(errDummy().Trace(d.FirstURL, d.SecondURL),
 			"Unhandled difference between ‘"+d.FirstURL+"’ and ‘"+d.SecondURL+"’.")
